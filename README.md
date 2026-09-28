@@ -119,6 +119,32 @@ Un conteneur en cours d'exécution a été arrêté manuellement (`aws ecs stop-
 - Stockage RDS chiffré au repos ; scan de vulnérabilités automatique sur chaque image poussée vers ECR.
 - Protection SSRF sur les URL de services ajoutées par l'utilisateur.
 
+## Test de résistance : trouver le point de rupture
+
+Un second test, volontairement plus agressif que le premier, a été lancé pour tenter de déclencher un vrai scale-out : 150 utilisateurs simulés soutenus pendant 3 minutes (au lieu d'une montée progressive), avec un temps d'attente réduit entre requêtes.
+
+| Indicateur | Résultat |
+|---|---|
+| Requêtes totales | 5 723 |
+| Taux d'erreur | 8.28% |
+| Latence moyenne | 5.13 s |
+| Latence p95 | 60 s (timeout k6) |
+
+CPU du conteneur sur cette fenêtre :
+
+| Heure (UTC+1) | CPU moyen | CPU max |
+|---|---|---|
+| 23:50 (avant le test) | 0.15% | 0.21% |
+| 23:51 (charge appliquée) | 12.13% | 71.79% |
+| 23:52 | 0.40% | 2.46% |
+| 23:53 | 17.56% | 92.16% |
+| 23:54 | 0.71% | 2.80% |
+| 23:55 (fin du test) | 0.93% | 2.87% |
+
+**Résultat inattendu, contrairement à l'hypothèse émise après le premier test** : malgré un pic CPU à 92%, aucun scale-out ne s'est déclenché (le nombre de conteneurs actifs est resté à 1 pendant tout le test, confirmé par une surveillance en parallèle). L'hypothèse la plus probable : le vrai goulot d'étranglement n'était pas le CPU mais le pool de connexions MySQL de SQLAlchemy (5 connexions par défaut), saturé par les requêtes N+1 déjà identifiées comme limitation ci-dessous — une requête qui attend une connexion libre n'utilise pas de CPU, elle attend, d'où l'alternance entre pics brefs et calme plutôt qu'une charge CPU soutenue capable de déclencher l'auto-scaling.
+
+Le service s'est intégralement rétabli après le test (`/health` de nouveau à 100% en quelques secondes), sans intervention manuelle. Cette limite est corrigible en production par un pool de connexions plus grand et/ou un correctif des requêtes N+1 — volontairement non corrigée ici pour garder une trace honnête du comportement observé sous charge réelle.
+
 ## Limitations connues / améliorations possibles
 
 - **Pas d'authentification sur l'API** (dashboard et `/docs` publics) — acceptable pour cet exercice, à ajouter en production.
