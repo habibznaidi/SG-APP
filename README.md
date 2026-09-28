@@ -86,17 +86,26 @@ Déploiement :
 
 ## Comportement sous charge (test k6)
 
-Scénario : montée progressive de 10 à 100 utilisateurs simulés sur 3 minutes, requêtes sur `GET /services` (lecture réelle en base à chaque appel), contre l'URL publique.
+Scénario : montée progressive de 10 à 100 utilisateurs simulés sur 3 minutes, requêtes sur `GET /services` (lecture réelle en base MySQL/RDS à chaque appel), contre l'URL publique.
 
 | Indicateur | Résultat |
 |---|---|
-| Requêtes totales | 7 822 |
+| Requêtes totales | 7 270 |
 | Taux d'erreur | 0.00% |
-| Latence moyenne | 15.84 ms |
-| Latence p95 | 21.75 ms |
-| Latence max | 205.35 ms |
+| Latence moyenne | 92.6 ms |
+| Latence p95 | 199.38 ms |
+| Latence max | 789.27 ms |
 
-Aucune erreur sur l'ensemble du test, latence stable même proche de 100 utilisateurs simultanés. Le nombre de conteneurs n'a pas augmenté pendant ce test : l'application étant légère, le seuil CPU d'auto-scaling n'a pas été atteint sur cette charge. La politique d'auto-scaling est en place (1 à 2 conteneurs, déclenchement sur CPU) et se déclencherait sous une charge plus soutenue ou plus consommatrice de CPU.
+CPU du conteneur (Amazon CloudWatch, métrique `AWS/ECS CPUUtilization`) sur la fenêtre du test :
+
+| Heure (UTC+1) | CPU moyen | CPU max |
+|---|---|---|
+| 23:08 (avant le test) | 0.11% | 0.13% |
+| 23:09 (montée en charge) | 0.45% | 2.15% |
+| 23:10 (charge croissante) | 6.57% | 19.54% |
+| 23:11 (proche du pic, ~100 VUs) | 18.65% | 47.64% |
+
+Aucune erreur sur l'ensemble du test. La latence augmente avec la charge (attendu : chaque requête déclenche une vraie lecture réseau vers RDS), mais reste sous 800ms même au pic. Le CPU suit clairement la montée en charge (multiplié par plus de 150 entre le début et le pic), sans toutefois franchir le seuil de déclenchement du scale-out sur cette fenêtre de 3 minutes — un test plus long ou plus intensif le déclencherait, comme le montre la tendance nette de cette courbe.
 
 ## Scénario de panne
 
