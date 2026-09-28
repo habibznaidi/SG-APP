@@ -93,5 +93,16 @@ jobs:
         run: |
           aws ecs update-express-gateway-service \
             --service-arn ${{ vars.ECS_SERVICE_ARN }} \
-            --primary-container '{"image":"${{ needs.build-and-push.outputs.image }}","containerPort":8000,"environment":[{"name":"DATABASE_URL","value":"sqlite:///./servicepulse.db"}]}' \
+            --primary-container '{
+              "image":"${{ needs.build-and-push.outputs.image }}",
+              "containerPort":8000,
+              "environment":[
+                {"name":"DB_HOST","value":"servicepulse-db.cd2iqe8eky4i.eu-west-3.rds.amazonaws.com"},
+                {"name":"DB_NAME","value":"servicepulse"},
+                {"name":"DB_USER","value":"admin"}
+              ],
+              "secrets":[
+                {"name":"DB_PASSWORD","valueFrom":"arn:aws:secretsmanager:eu-west-3:472768270876:secret:rds!db-2537f3de-9fe0-4dec-98e3-f77259306eb1-hzNhJs:password::"}
+              ]
+            }' \
             --monitor-resources
