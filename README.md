@@ -1,3 +1,5 @@
+> **Contexte** : ce dépôt démarre avec un prototype (backend FastAPI, dashboard, tests, Dockerfile) préparé avant le lancement du chronomètre de 4h, avec l'accord explicite du recruteur. Le premier commit reflète ce point de départ. Tout ce qui suit dans l'historique — intégration CI/CD complète avec déploiement automatique, base de données RDS, test de charge, scénario de panne — a été réalisé pendant la fenêtre de 4h, qui a démarré au push du premier commit.
+
 # ServicePulse
 
 Plateforme de monitoring de services web/API : ajout de services à surveiller, vérification de leur disponibilité et de leur latence, historique des checks.
