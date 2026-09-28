@@ -73,3 +73,25 @@ jobs:
           docker push $REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
           docker push $REGISTRY/$ECR_REPOSITORY:latest
           echo "image=$REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Déploiement sur ECS
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Se connecter à AWS (OIDC, sans clé stockée)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Mettre à jour le service ECS avec la nouvelle image
+        run: |
+          aws ecs update-express-gateway-service \
+            --service-arn ${{ vars.ECS_SERVICE_ARN }} \
+            --primary-container '{"image":"${{ needs.build-and-push.outputs.image }}","containerPort":8000,"environment":[{"name":"DATABASE_URL","value":"sqlite:///./servicepulse.db"}]}' \
+            --monitor-resources
