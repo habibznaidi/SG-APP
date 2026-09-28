@@ -1,8 +1,9 @@
 def test_health(client):
     resp = client.get("/health")
     assert resp.status_code == 200
-    assert resp.json() == {"status": "healthy"}
-
+    data = resp.json()
+    assert data["status"] == "healthy"
+    assert data["database"] == "connected"
 
 def test_create_and_list_service(client):
     resp = client.post("/services", json={"name": "GitHub", "url": "https://github.com"})

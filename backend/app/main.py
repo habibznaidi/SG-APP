@@ -6,9 +6,9 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy.exc import OperationalError
+from sqlalchemy import text
 
-from .database import Base, engine
+from .database import Base, SessionLocal, engine
 from .routers import services
 
 logging.basicConfig(
@@ -55,7 +55,23 @@ app.include_router(services.router)
 
 @app.get("/health")
 def health():
-    return {"status": "healthy"}
+    """Liveness check : toujours 200 (le process tourne) — ECS s'en sert
+    pour router le trafic et redémarrer le conteneur. 'database' reflète
+    le vrai statut, sans faire échouer le check HTTP sur un incident DB
+    passager : avec 1 seul conteneur (minTaskCount: 1), une boucle de
+    redémarrage sur un souci RDS temporaire aggraverait la situation
+    plutôt que de la résoudre."""
+    db_status = "connected"
+    try:
+        db = SessionLocal()
+        try:
+            db.execute(text("SELECT 1"))
+        finally:
+            db.close()
+    except OperationalError as exc:
+        db_status = "unreachable"
+        logger.warning("health check: database unreachable: %s", exc)
+    return {"status": "healthy", "database": db_status}
 
 
 # Registered LAST on purpose: this is a catch-all for "/", so anything
