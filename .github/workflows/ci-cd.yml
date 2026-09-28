@@ -97,7 +97,7 @@ jobs:
               "image":"${{ needs.build-and-push.outputs.image }}",
               "containerPort":8000,
               "environment":[
-                {"name":"DB_HOST","value":"servicepulse-db.cd2iqe8eky4i.eu-west-3.rds.amazonaws.com"},
+                {"name":"DB_HOST","value":"${{ vars.DB_HOST }}"},
                 {"name":"DB_NAME","value":"servicepulse"},
                 {"name":"DB_USER","value":"admin"}
               ],
