@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
-
+from sqlalchemy.exc import OperationalError
 from .database import Base, SessionLocal, engine
 from .routers import services
 
